@@ -1,394 +1,386 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:messaging/screens/home_screen.dart';
 import 'AuthenticationScreen.dart';
 
+//final _firestore = FirebaseFirestore.instance;
+User loggedInUser;
 
-// CollectionReference store=FirebaseFirestore.instance.collection('message');
-
-class ChatScreen extends StatefulWidget {
-
+class MainChatScreen extends StatefulWidget {
+  final String peerId;
+  final String currentId;
+  final String name;
+  final String url;
+  final String email;
+  MainChatScreen(
+      {this.name, this.url, this.peerId, this.email, this.currentId});
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  _MainChatScreenState createState() => _MainChatScreenState(email);
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _MainChatScreenState extends State<MainChatScreen> {
+  final String email;
+  final auth = FirebaseAuth.instance;
+  String messageText;
+  final messageTextController = TextEditingController();
+  String groupChatId;
 
-  Future getData()async{
-    var firestore=FirebaseFirestore.instance;
-    QuerySnapshot query= await firestore.collection('message').get();
-    return query.docs;
+  _MainChatScreenState(this.email);
+
+  @override
+  void initState() {
+    super.initState();
+    getUserInstance();
   }
+
+  void getUserInstance() async {
+    if (widget.currentId.hashCode <= widget.peerId.hashCode) {
+      groupChatId = '${widget.currentId}-${widget.peerId}';
+      print('$groupChatId*********#####');
+    } else {
+      groupChatId = '${widget.peerId}-${widget.currentId}';
+      print('$groupChatId###########');
+    }
+    try {
+      final user = auth.currentUser;
+      if (user != null) {
+        loggedInUser = user;
+        //print(loggedInUser.email);
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Container(
-            padding: EdgeInsets.only(top: 10,bottom: 5,left: 15,right: 15),
-            height: 250,
-            width: MediaQuery.of(context).size.width,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(20),bottomRight: Radius.circular(20)),
-              color: Colors.blueAccent.shade700,
-                boxShadow: [BoxShadow(
-                  color: Colors.grey,
-                  blurRadius: 5.0,
-                ),]
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 5,
+        leading: GestureDetector(
+          onTap: () {
+            Navigator.pop(context);
+          },
+          child: Icon(
+            Icons.arrow_back_ios_rounded,
+            color: Colors.blue,
+            size: 30,
+          ),
+        ),
+        title: Row(
+          children: [
+            buildImageOfUserFromFirebase(),
+            SizedBox(
+              width: 20,
             ),
-            child: SafeArea(
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Icon(Icons.drag_indicator,color: Colors.white,),
-                      Text(
-                        'Messages',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
-                      imageProfile(50,),
-                    ],
-                  ),
-                  SizedBox( height: 40,),
-                  Container(
-                    height: 75,
-                    child: ListView(
-                      shrinkWrap: true,
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        imageIcon(45),
-                        SizedBox( width: 20,),
-                        peopleForChat(height: 45,width: 65,url: 'https://images.unsplash.com/photo-1508901706-0f1b882dc1f5?ixid=MXwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhbGZ8ZW58MHx8MHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60'),
-                        SizedBox( width: 20,),
-                        peopleForChat(height: 45,width: 65,url: 'https://images.unsplash.com/photo-1561677843-39dee7a319ca?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80'),
-                        SizedBox( width: 20,),
-                        peopleForChat(height: 45,width: 65,url: 'https://images.unsplash.com/photo-1508901706-0f1b882dc1f5?ixid=MXwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhbGZ8ZW58MHx8MHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60'),
-                        SizedBox( width: 20,),
-                        peopleForChat(height: 45,width: 65,url: 'https://images.unsplash.com/photo-1508901706-0f1b882dc1f5?ixid=MXwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhbGZ8ZW58MHx8MHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60'),
-                        // SizedBox( width: 20,),
-                        // imageProfile(45),
-                        // SizedBox( width: 20,),
-                        // imageProfile(45),
-                        // SizedBox( width: 20,),
-                        // imageProfile(45),
-                        // SizedBox( width: 20,),
-                        // imageProfile(45),
-                        // SizedBox( width: 20,),
-                        // imageProfile(45),
-                        // SizedBox( width: 20,),
-                        // imageProfile(45),
-                      ],
-                    ),
-                  ),
-                ],
+            buildNameOfTheUserFromFirebase(),
+          ],
+        ),
+        actions: [
+          Icon(
+            Icons.call,
+            size: 30,
+            color: Colors.blue,
+          ),
+          SizedBox(
+            width: 20,
+          ),
+          Icon(
+            Icons.video_call_sharp,
+            size: 40,
+            color: Colors.blue,
+          ),
+          SizedBox(
+            width: 20,
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            MessageStream(
+              email: widget.email,
+              chatId: groupChatId,
+            ),
+            typeYourMessageHere(),
+          ],
+        ),
+      ),
+    );
+  }
 
+  buildImageOfUserFromFirebase() {
+    return CircleAvatar(
+      backgroundColor: Colors.blue,
+      backgroundImage: NetworkImage(
+        widget.url,
+      ),
+
+      //child: Icon(Icons.supervised_user_circle),
+    );
+  }
+
+  buildNameOfTheUserFromFirebase() {
+    return Text(
+      '${widget.name.split(' ')[0]}',
+      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+    );
+  }
+
+  typeYourMessageHere() {
+    return Container(
+      // margin: EdgeInsets.only(top: 10,bottom: 10),
+      decoration: BoxDecoration(
+        color: Color(0xffF0F0F0),
+        // border: Border(
+        //   top: BorderSide(color: Color(0xffF0F0F0), width: 2.0),
+        // ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: Icon(
+              Icons.insert_emoticon_rounded,
+              color: Colors.grey[600],
+              size: 30,
+            ),
+            onPressed: () {
+              // messageTextController.clear();
+              // _fireStore.collection('message').add({
+              //   'Message': messageText,
+              //   'Sender': loggedInUser.email,
+              //   'time': FieldValue.serverTimestamp(),
+              // });
+            },
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: messageTextController,
+                onChanged: (value) {
+                  messageText = value;
+                },
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white,
+                  hintText: 'type your message',
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(32)),
+                    borderSide: BorderSide(color: Colors.white, width: 2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xffF0F0F0), width: 1),
+                    borderRadius: BorderRadius.all(Radius.circular(32)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide:
+                        BorderSide(color: Color(0xffF0F0F0), width: 2.0),
+                    borderRadius: BorderRadius.all(Radius.circular(32)),
+                  ),
+                ),
               ),
             ),
           ),
-          Expanded(child: chatList()),
+          IconButton(
+            icon: Icon(
+              Icons.send,
+              color: Colors.grey[600],
+              size: 30,
+            ),
+            onPressed: () {
+              messageTextController.clear();
+              print('${widget.email}');
+
+              try {
+                // print('*****************************************');
+                // var documentReference = firestore
+                //     .collection('all_text')
+                //     .doc(groupChatId)
+                //     .collection(groupChatId)
+                //     .doc(DateTime.now().millisecondsSinceEpoch.toString());
+
+                // fireStore.runTransaction((transaction) async {
+                //     transaction.set(documentReference, {
+                //       'idFrom' : widget.currentId,
+                //       'idTo' : widget.peerId,
+                //       'timeStamp'  : DateTime.now().millisecondsSinceEpoch.toString(),
+                //       'Message' : messageText,
+                //       'image' :widget.url,
+                //       'email' : loggedInUser.email,
+                //   });
+
+                // });
+                firestore
+                    .collection('all_text')
+                    .doc(groupChatId)
+                    .collection(groupChatId)
+                    .add({
+                  'Message': messageText,
+                  'image': widget.url,
+                  'email': loggedInUser.email,
+                  'time': FieldValue.serverTimestamp(),
+                });
+              } catch (e) {
+                Fluttertoast.showToast(
+              msg: e.code.toString(),
+              toastLength: Toast.LENGTH_SHORT,
+              gravity: ToastGravity.CENTER,
+              //timeInSecForIos: 1
+              );
+                print(e.code);
+              }
+            },
+          ),
         ],
       ),
-      bottomNavigationBar: BottomAppBar(
-        elevation: 4,
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        shape: CircularNotchedRectangle(),
+    );
+  }
+}
+
+class MessageStream extends StatelessWidget {
+  final String email;
+  final String chatId;
+
+  MessageStream({this.email, this.chatId});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: firestore
+          .collection('all_text')
+          .doc(chatId)
+          .collection(chatId)
+          .orderBy('time', descending: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          Fluttertoast.showToast(
+              msg: snapshot.error.toString(),
+              toastLength: Toast.LENGTH_SHORT,
+              gravity: ToastGravity.CENTER,
+              //timeInSecForIos: 1
+              );
+        }
+        if (!snapshot.hasData) {
+          return Center(
+            child: CircularProgressIndicator(
+              backgroundColor: Colors.blue,
+            ),
+          );
+        }
+
+        final messages = snapshot.data.docs.reversed;
+        List<MessageBubble> messageBubbles = [];
+        for (var message in messages) {
+          final messageText = message.data()['Message'];
+          final senderImage = message.data()['image'];
+          final identity = message.data()['email'];
+          final messageTime = message.data()['time'] as Timestamp; //add this
+          final currentUser = loggedInUser.email;
+          print(identity);
+          print(currentUser);
+          print(messageText);
+
+          final messageBubble = MessageBubble(
+            sender: senderImage,
+            text: messageText,
+            isMe: currentUser == identity,
+            time: messageTime, //add this
+          );
+
+          messageBubbles.add(messageBubble);
+        }
+        return Expanded(
+          child: ListView(
+              reverse: true,
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+              children: messageBubbles),
+        );
+      },
+    );
+  }
+}
+
+class MessageBubble extends StatelessWidget {
+  final String sender;
+  final String text;
+  final bool isMe;
+  final Timestamp time;
+
+  MessageBubble({
+    this.text,
+    this.sender,
+    this.isMe,
+    this.time,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.all(10),
+      child: isMe != true
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                buildPaddingImageForChat(),
+                buildMaterialTextDesign(),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                buildMaterialTextDesign(),
+                buildPaddingImageForChat(),
+              ],
+            ),
+    );
+  }
+
+  Material buildMaterialTextDesign() {
+    return Material(
+      color: isMe == true ? Color(0xffDCF8C6) : Colors.white,
+      elevation: 5,
+      borderRadius: isMe == true
+          ? BorderRadius.only(
+              topLeft: Radius.circular(30),
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            )
+          : BorderRadius.only(
+              topRight: Radius.circular(30),
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
         child: Container(
-          height: 50,
-
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(icon: Icon( Icons.message), onPressed: null,color: Colors.black54,),
-              IconButton(icon: Icon( Icons.call), onPressed: null,color: Colors.black54,),
-              IconButton(icon: Icon( Icons.account_circle_outlined), onPressed: null,color: Colors.black54,),
-              IconButton(icon: Icon( Icons.settings), onPressed: null,color: Colors.black54,)
-            ],
-
+          child: Text(
+            text,
+            //textAlign: TextAlign.right,
+            style: TextStyle(
+              color: isMe ? Colors.black : Colors.black,
+              fontSize: 15,
+            ),
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: (){},
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 
-  Widget chatList(){
-    return ListView(
-      //shrinkWrap: true,
-      //scrollDirection: Axis.vertical,
-      children: list,
-
+  Padding buildPaddingImageForChat() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      child: CircleAvatar(
+        backgroundImage: NetworkImage(sender),
+      ),
     );
   }
-  List<ListTile> list= [
-    ListTile(
-      leading: peopleForChat(
-          height: 45,
-          width: 45,
-          url: 'https://images.unsplash.com/photo-1508901706-0f1b882dc1f5?ixid=MXwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhbGZ8ZW58MHx8MHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60'
-      ),
-      title: Text('Team Message',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Hi ! Welcome'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-          height: 45,
-          width: 45,
-          url: 'https://images.unsplash.com/photo-1508901706-0f1b882dc1f5?ixid=MXwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhbGZ8ZW58MHx8MHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60'
-      ),
-      title: Text('Angle Queen',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Hi! are you there?'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-          height: 45,
-          width: 45,
-          url: 'https://images.unsplash.com/photo-1561677843-39dee7a319ca?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80',
-      ),
-      title: Text('Irish Man',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Lets party tonight! Hotel nagarjun'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-          height: 45,
-          width: 45,
-          url: 'https://images.unsplash.com/photo-1508901706-0f1b882dc1f5?ixid=MXwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhbGZ8ZW58MHx8MHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60'
-      ),
-      title: Text('Angle Queen',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Hi! are you there?'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-          height: 45,
-          width: 45,
-          url: 'https://images.unsplash.com/photo-1508901706-0f1b882dc1f5?ixid=MXwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhbGZ8ZW58MHx8MHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60'
-      ),
-      title: Text('Angle Queen',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Hi! are you there?'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-        height: 45,
-        width: 45,
-        url: 'https://images.unsplash.com/photo-1561677843-39dee7a319ca?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80',
-      ),
-      title: Text('Irish Man',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Lets party tonight! Hotel nagarjun'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-          height: 45,
-          width: 45,
-          url: 'https://images.unsplash.com/photo-1508901706-0f1b882dc1f5?ixid=MXwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhbGZ8ZW58MHx8MHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60'
-      ),
-      title: Text('Angle Queen',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Hi! are you there?'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-        height: 45,
-        width: 45,
-        url: 'https://images.unsplash.com/photo-1561677843-39dee7a319ca?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80',
-      ),
-      title: Text('Irish Man',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Lets party tonight! Hotel nagarjun'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-          height: 45,
-          width: 45,
-          url: 'https://images.unsplash.com/photo-1508901706-0f1b882dc1f5?ixid=MXwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhbGZ8ZW58MHx8MHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60'
-      ),
-      title: Text('Angle Queen',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Hi! are you there?'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-        height: 45,
-        width: 45,
-        url: 'https://images.unsplash.com/photo-1561677843-39dee7a319ca?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80',
-      ),
-      title: Text('Irish Man',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Lets party tonight! Hotel nagarjun'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-          height: 45,
-          width: 45,
-          url: 'https://images.unsplash.com/photo-1508901706-0f1b882dc1f5?ixid=MXwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhbGZ8ZW58MHx8MHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60'
-      ),
-      title: Text('Angle Queen',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Hi! are you there?'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-        height: 45,
-        width: 45,
-        url: 'https://images.unsplash.com/photo-1561677843-39dee7a319ca?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80',
-      ),
-      title: Text('Irish Man',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Lets party tonight! Hotel nagarjun'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-          height: 45,
-          width: 45,
-          url: 'https://images.unsplash.com/photo-1508901706-0f1b882dc1f5?ixid=MXwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhbGZ8ZW58MHx8MHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=60'
-      ),
-      title: Text('Angle Queen',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Hi! are you there?'),
-    ),
-    ListTile(
-      leading: peopleForChat(
-        height: 45,
-        width: 45,
-        url: 'https://images.unsplash.com/photo-1561677843-39dee7a319ca?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80',
-      ),
-      title: Text('Irish Man',style: TextStyle(
-        color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),),
-      subtitle: Text('Lets party tonight! Hotel nagarjun'),
-    ),
-  ];
 }
-
-// Center(
-// child: FutureBuilder(
-// future: getData(),
-// builder:
-// (BuildContext context, snapshot) {
-//
-// if (snapshot.hasError) {
-// return Text("Something went wrong");
-// }
-//
-// if (snapshot.connectionState == ConnectionState.done) {
-// DocumentSnapshot data = snapshot.data[1];
-// return Center(child: Text('${data['password']}'));
-// }
-//
-// return Text("loading");
-// },
-// ),
-// ),
-
-
-Widget imageProfile(double size){
-  return Container(
-   height: size,
-    width: size,
-    decoration: BoxDecoration(
-      image: DecorationImage(
-        image: NetworkImage('https://flutter.github.io/assets-for-api-docs/assets/widgets/owl-2.jpg'),
-        fit: BoxFit.cover,
-      ),
-      border: Border.all(color: Colors.white38,width: 2),
-      borderRadius: BorderRadius.all(Radius.circular(10)),
-
-    ),
-  );
-
-}
-
-Widget peopleForChat({double height,double width, String url}){
-  return Container(
-    height: height+10,
-    width: width+20,
-    decoration: BoxDecoration(
-      image: DecorationImage(
-        image: NetworkImage(url),
-        fit: BoxFit.cover,
-      ),
-      borderRadius: BorderRadius.all(Radius.circular(10)),
-      border: Border.all(color: Colors.black26,width: 2)
-
-    ),
-  );
-
-}
-
-
-Widget imageIcon(double size){
-  return Container(
-    height: size,
-    width: size+30,
-    decoration: BoxDecoration(
-
-      borderRadius: BorderRadius.all(Radius.circular(10)),
-      color: Colors.grey,
-      border: Border.all(color: Colors.black26),
-
-    ),
-    child: Icon(Icons.search_outlined,size: 40,),
-  );
-
-}
-
-
-
-
-

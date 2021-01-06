@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:messaging/AuthServices/services.dart';
-import 'package:messaging/rounded_button.dart';
+import 'package:messaging/utils/rounded_button.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
 import 'AuthenticationScreen.dart';

@@ -2,8 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:messaging/AuthServices/services.dart';
+import 'package:messaging/data/data_model.dart';
 import 'package:messaging/utils/cached_network_image.dart';
 import 'package:messaging/utils/user_account_page.dart';
+import 'package:messaging/data/data_source_firebase.dart';
 //import 'package:provider/provider.dart';
 import 'chat_screen.dart';
 import 'AuthenticationScreen.dart';
@@ -34,11 +36,12 @@ class _ChatScreenState extends State<ChatScreen> {
   //   return query.docs;
   // }
   final RefreshController controller = RefreshController();
+  final _auth = FirebaseAuthImpl();
 
   DateTime currentBackPressTime;
   Future<bool> onWillPop() {
     DateTime now = DateTime.now();
-    if (currentBackPressTime == null || 
+    if (currentBackPressTime == null ||
         now.difference(currentBackPressTime) > Duration(seconds: 2)) {
       currentBackPressTime = now;
       Fluttertoast.showToast(msg: 'Double press to back');
@@ -47,19 +50,17 @@ class _ChatScreenState extends State<ChatScreen> {
     return Future.value(true);
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: WillPopScope(
         onWillPop: onWillPop,
-              child: Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Container(
-              padding:
-                  EdgeInsets.only(top: 10, bottom: 5, left: 15, right: 15),
+              padding: EdgeInsets.only(top: 10, bottom: 5, left: 15, right: 15),
               height: 250,
               width: MediaQuery.of(context).size.width,
               decoration: BoxDecoration(
@@ -92,21 +93,15 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => UserAccountPage(
-                                          userId: widget.ref,
-                                        )));
-                            // final authhh = Provider.of<FirebaseAuthImpl>(
-                            //     context,
-                            //     listen: false);
-                            // authhh.signOut();
-                            // Navigator.pop(context);
-                          },
-                          child: getProfileImage(widget.ref, 50)
-                        ),
+                            onTap: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => UserAccountPage(
+                                            userId: widget.ref,
+                                          )));
+                            },
+                            child: getProfileImage(widget.ref, 50)),
                       ],
                     ),
                     SizedBox(
@@ -227,10 +222,10 @@ class _ChatScreenState extends State<ChatScreen> {
               //shrinkWrap: true,
               //scrollDirection: Axis.vertical,
               children: snapshot.data.docs.map((e) {
-            if (e.data()['email'] == auth.currentUser.email) {
+            if (e.data()['email'] == _auth.currentUserEmail) {
               currentUserUrl = e.data()['image'];
             }
-            if (e.data()['email'] != auth.currentUser.email) {
+            if (e.data()['email'] != _auth.currentUserEmail) {
               return Column(
                 children: [
                   Card(
@@ -253,7 +248,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             name: e.data()['name'],
                             url: e.data()['image'],
                             email: e.data()['email'],
-                            currentUserUrl : currentUserUrl,
+                            currentUserUrl: currentUserUrl,
                             currentId: widget.ref,
                             peerId: e.data()['id'],
                           );

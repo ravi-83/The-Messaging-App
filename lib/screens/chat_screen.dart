@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:intl/intl.dart';
 import 'package:messaging/AuthServices/services.dart';
 import 'package:messaging/data/data_model.dart';
 import 'package:messaging/data/data_source_firebase.dart';
@@ -37,6 +38,7 @@ class _MainChatScreenState extends State<MainChatScreen> {
   String messageText;
   final messageTextController = TextEditingController();
   String groupChatId;
+  final _auth = FirebaseAuthImpl();
 
   _MainChatScreenState(this.email);
 
@@ -258,6 +260,7 @@ class _MainChatScreenState extends State<MainChatScreen> {
 }
 
 class MessageStream extends StatelessWidget {
+  final _auth = FirebaseAuthImpl();
   final String email;
   final String chatId;
   final String currentUserUrl;
@@ -300,7 +303,7 @@ class MessageStream extends StatelessWidget {
           final recever = message.data()['toUser'];
           final identity = message.data()['email'];
           final messageTime = message.data()['time'] as Timestamp; //add this
-          final currentUser = loggedInUser.email;
+          final currentUser = _auth.currentUserEmail;
           print(identity);
           print(currentUser);
           print(messageText);
@@ -346,6 +349,10 @@ class MessageBubble extends StatelessWidget {
     this.currentUserUrl,
     this.otherSideUserUrl,
   });
+  final DateFormat dateFormat = DateFormat.jm();
+  //final String date= dateFormat.format(time.toDate());
+  
+
 
   @override
   Widget build(BuildContext context) {
@@ -361,6 +368,7 @@ class MessageBubble extends StatelessWidget {
                 children: [
                   getImage(otherSideUserUrl, 40),
                   Flexible(child: buildMaterialTextDesign()),
+                  //Text('${dateFormat.format(time.toDate())}'),
                 ],
               ),
             )
@@ -370,7 +378,8 @@ class MessageBubble extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Flexible(child: buildMaterialTextDesign()),
-                  getImage(currentUserUrl, 40)
+                  getImage(currentUserUrl, 40),
+                  //Text('${dateFormat.format(time.toDate())}'),
                 ],
               ),
             ),
@@ -392,17 +401,48 @@ class MessageBubble extends StatelessWidget {
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-        child: Container(
-          child: Text(
-            text,
-            //textAlign: TextAlign.right,
-            style: TextStyle(
-              color: isMe ? Colors.black : Colors.black,
-              fontSize: 15,
+      child: Container(
+        child: Stack(
+          children: [
+            Padding(
+              padding: isMe ? EdgeInsets.only(top: 10,bottom: 20,left: 10,right: 30)
+              : EdgeInsets.only(top: 10,bottom: 20,left: 30,right: 10),
+              child: Text(
+                text,
+                //textAlign: TextAlign.right,
+                style: TextStyle(
+                  color: isMe ? Colors.black : Colors.black,
+                  fontSize: 15,
+                ),
+              ),
             ),
-          ),
+            isMe ? Positioned(
+              bottom: 5,
+              right: 10,
+              child: Text(
+                '${dateFormat.format(time== null ? DateTime.now() : time.toDate())}',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600
+                ),
+                
+                ),
+                
+              )
+              : Positioned(
+              bottom: 5,
+              left: 10,
+              child: Text(
+                '${dateFormat.format(time== null ? DateTime.now() : time.toDate())}',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600
+                ),
+                
+                ),
+                
+              ),
+          ],
         ),
       ),
     );

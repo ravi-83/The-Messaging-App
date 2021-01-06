@@ -47,8 +47,9 @@ class FirebaseAuthImpl implements AuthServices {
   }
 
   String get userId => _firebaseAuth.currentUser.uid;
+  String get currentUserEmail => _firebaseAuth.currentUser.email;
 
-  Future<User> getCurrentUser() async{
+  Future<User> getCurrentUser() async {
     User user;
     user = _firebaseAuth.currentUser;
     return user;

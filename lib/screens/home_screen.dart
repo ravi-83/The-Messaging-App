@@ -2,10 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:messaging/AuthServices/services.dart';
-import 'package:provider/provider.dart';
+import 'package:messaging/utils/cached_network_image.dart';
+import 'package:messaging/utils/user_account_page.dart';
+//import 'package:provider/provider.dart';
 import 'chat_screen.dart';
 import 'AuthenticationScreen.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 // CollectionReference store=FirebaseFirestore.instance.collection('message');
 
@@ -18,8 +21,9 @@ CollectionReference user = firestore.collection('message');
 
 class ChatScreen extends StatefulWidget {
   final String ref;
+  final String userDocId;
 
-  ChatScreen({this.ref});
+  ChatScreen({this.ref, this.userDocId});
   @override
   _ChatScreenState createState() => _ChatScreenState();
 }
@@ -30,23 +34,32 @@ class _ChatScreenState extends State<ChatScreen> {
   //   return query.docs;
   // }
   final RefreshController controller = RefreshController();
+
+  DateTime currentBackPressTime;
+  Future<bool> onWillPop() {
+    DateTime now = DateTime.now();
+    if (currentBackPressTime == null || 
+        now.difference(currentBackPressTime) > Duration(seconds: 2)) {
+      currentBackPressTime = now;
+      Fluttertoast.showToast(msg: 'Double press to back');
+      return Future.value(false);
+    }
+    return Future.value(true);
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SmartRefresher(
-        controller: controller,
-        enablePullDown: true,
-        header: WaterDropHeader(),
-        onRefresh: () async {
-          await Future.delayed(Duration(seconds: 1));
-          controller.refreshCompleted();
-        },
-        child: Column(
+      body: WillPopScope(
+        onWillPop: onWillPop,
+              child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Container(
-              padding: EdgeInsets.only(top: 10, bottom: 5, left: 15, right: 15),
+              padding:
+                  EdgeInsets.only(top: 10, bottom: 5, left: 15, right: 15),
               height: 250,
               width: MediaQuery.of(context).size.width,
               decoration: BoxDecoration(
@@ -80,14 +93,19 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                         GestureDetector(
                           onTap: () {
-                            final authhh =
-                                Provider.of<FirebaseAuthImpl>(context,listen: false);
-                            authhh.signOut();
-                            Navigator.pop(context);
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => UserAccountPage(
+                                          userId: widget.ref,
+                                        )));
+                            // final authhh = Provider.of<FirebaseAuthImpl>(
+                            //     context,
+                            //     listen: false);
+                            // authhh.signOut();
+                            // Navigator.pop(context);
                           },
-                          child: imageProfile(
-                            50,
-                          ),
+                          child: getProfileImage(widget.ref, 50)
                         ),
                       ],
                     ),
@@ -195,6 +213,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget chatList() {
+    String currentUserUrl;
     return StreamBuilder<QuerySnapshot>(
         stream: user.snapshots(),
         builder: (context, snapshot) {
@@ -208,38 +227,45 @@ class _ChatScreenState extends State<ChatScreen> {
               //shrinkWrap: true,
               //scrollDirection: Axis.vertical,
               children: snapshot.data.docs.map((e) {
+            if (e.data()['email'] == auth.currentUser.email) {
+              currentUserUrl = e.data()['image'];
+            }
             if (e.data()['email'] != auth.currentUser.email) {
               return Column(
                 children: [
-                  ListTile(
-                    leading: peopleForChat(size: 60, url: e.data()['image']),
-                    title: Text(
-                      '${e.data()['name']}',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                  Card(
+                    elevation: 2,
+                    child: ListTile(
+                      leading: getImage(e.data()['image'], 50),
+                      title: Text(
+                        '${e.data()['name']}',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
+                      subtitle: Text('Heyy!! Welcome to Messages'),
+                      onTap: () {
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) {
+                          return MainChatScreen(
+                            name: e.data()['name'],
+                            url: e.data()['image'],
+                            email: e.data()['email'],
+                            currentUserUrl : currentUserUrl,
+                            currentId: widget.ref,
+                            peerId: e.data()['id'],
+                          );
+                        }));
+                      },
                     ),
-                    subtitle: Text('Heyy!! Welcome to Messages'),
-                    onTap: () {
-                      Navigator.push(context,
-                          MaterialPageRoute(builder: (context) {
-                        return MainChatScreen(
-                          name: e.data()['name'],
-                          url: e.data()['image'],
-                          email: e.data()['email'],
-                          currentId: widget.ref,
-                          peerId: e.data()['id'],
-                        );
-                      }));
-                    },
                   ),
-                  Divider(
-                    color: Colors.black38,
-                    height: 10,
-                    thickness: 1,
-                  )
+                  // Divider(
+                  //   //color: Colors.black38,
+                  //   height: 10,
+                  //   //thickness: 1,
+                  // )
                 ],
               );
             } else {

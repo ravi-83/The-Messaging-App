@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:messaging/AuthServices/services.dart';
 import 'package:messaging/rounded_button.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,7 +16,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   TextEditingController _emailController = TextEditingController();
   TextEditingController _passwordController = TextEditingController();
-  final _auth = FirebaseAuth.instance;
+  //final _auth = FirebaseAuth.instance;
   final _key = GlobalKey<FormState>();
   String email;
   String password;
@@ -24,55 +26,39 @@ class _LoginScreenState extends State<LoginScreen> {
 
   onPressed() async {
     try {
-      final auth = Provider.of<FirebaseAuthImpl>(context,listen: false);
+      final auth = Provider.of<FirebaseAuthImpl>(context, listen: false);
       UserDetails usr = await auth.signInWithEmailAndPassword(email, password);
-      // final userId = await _auth.signInWithEmailAndPassword(
-      //     email: email, password: password);
-
-      // await firestore
-      //     .collection('message')
-      //     .where('id', isEqualTo:userId.user.uid)
-      //     .get()
-      //     .then((value) => value.docs.forEach((element) {
-      //           if (element.data().containsValue(email)) {
-      //             currentUser = element.data()['id'];
-      //             print('emememjbbsjbskfdkfbjbvsjfsdfjgdjkfgdugsgkdkghjgskfhksgndjgygf$currentUser')
-      //           }
-      //         }));
-      // FutureBuilder(
-      //   future: fireStore.collection('message').doc(ref).get(),
-      //   builder: (context, snapshot) {
-      //     if (snapshot.hasError) {
-      //       print('Somthing went wrong');
-      //       return null;
-      //     }
-      //     if (snapshot.connectionState == ConnectionState.done) {
-      //       Map<String, dynamic> data = snapshot.data.data();
-      //       name = data['name'];
-      //       url = data['url'];
-      //     }
-      //   },
-      // );
-      // if (userId != null) {
-      //   //currently = ref;
-      //   Navigator.push(context, MaterialPageRoute(builder: (context) {
-      //     return ChatScreen(
-      //       ref: userId.user.uid,
-      //     );
-      //   }));
-      // }
 
       if (usr != null) {
         //currently = ref;
-        Navigator.push(context, MaterialPageRoute(builder: (context) {
-          return ChatScreen(
-            ref: usr.uid,
-          );
-        }));
+        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(
+          builder: (context) {
+            return ChatScreen(
+              ref: usr.uid,
+            );
+          },
+        ),
+          (Route<dynamic> route) => false,
+        );
       }
     } on FirebaseAuthException catch (e) {
-      _scaffoldKey.currentState
-          .showSnackBar(SnackBar(content: Text('${e.code}')));
+      Fluttertoast.showToast(
+          msg: e.code,
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0);
+    } catch (e) {
+      Fluttertoast.showToast(
+          msg: e.code,
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0);
     }
   }
 

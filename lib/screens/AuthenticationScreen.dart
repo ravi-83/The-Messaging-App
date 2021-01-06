@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:messaging/AuthServices/services.dart';
 import 'package:messaging/rounded_button.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -40,13 +41,13 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
         final authh = Provider.of<FirebaseAuthImpl>(context,listen: false);
         UserDetails userDetails =
             await authh.createUserWithEmailAndPassword(email, password);
-
+ 
         // UserCredential newUser = await auth.createUserWithEmailAndPassword(
         //     email: email, password: password);
 
         // //User firebaseUser= await auth.signInWithCredential(newUser).user;
 
-        var reff = fireStore.collection('message').doc();
+        var reff = fireStore.collection('message').doc(userDetails.uid);
 
         await reff.set({
           'name': name,
@@ -57,11 +58,13 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
         
 
         if (userDetails != null)
-          Navigator.push(context, MaterialPageRoute(builder: (context) {
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {
             return ChatScreen(
               ref: userDetails.uid,
             );
-          }));
+          }),
+            (Route<dynamic> route) => false,
+          );
         setState(() {
           //showSpinner=false;
         });
@@ -85,7 +88,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
               textColor: Colors.white,
               fontSize: 16.0);
         }
-      } catch (e) {
+      } catch (e){
         Fluttertoast.showToast(
             msg: e.code,
             toastLength: Toast.LENGTH_SHORT,

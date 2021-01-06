@@ -2,7 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:messaging/AuthServices/services.dart';
+import 'package:messaging/data/data_model.dart';
+import 'package:messaging/data/data_source_firebase.dart';
 import 'package:messaging/screens/home_screen.dart';
+import 'package:messaging/utils/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import 'AuthenticationScreen.dart';
 
 //final _firestore = FirebaseFirestore.instance;
@@ -14,8 +19,14 @@ class MainChatScreen extends StatefulWidget {
   final String name;
   final String url;
   final String email;
+  final String currentUserUrl;
   MainChatScreen(
-      {this.name, this.url, this.peerId, this.email, this.currentId});
+      {this.name,
+      this.url,
+      this.peerId,
+      this.email,
+      this.currentId,
+      this.currentUserUrl});
   @override
   _MainChatScreenState createState() => _MainChatScreenState(email);
 }
@@ -72,7 +83,7 @@ class _MainChatScreenState extends State<MainChatScreen> {
         ),
         title: Row(
           children: [
-            buildImageOfUserFromFirebase(),
+            getImage(widget.url, 40),
             SizedBox(
               width: 20,
             ),
@@ -89,7 +100,7 @@ class _MainChatScreenState extends State<MainChatScreen> {
             width: 20,
           ),
           Icon(
-            Icons.video_call_sharp,
+            Icons.video_call_rounded,
             size: 40,
             color: Colors.blue,
           ),
@@ -106,6 +117,8 @@ class _MainChatScreenState extends State<MainChatScreen> {
             MessageStream(
               email: widget.email,
               chatId: groupChatId,
+              currentUserUrl: widget.currentUserUrl,
+              otherSideUserUrl: widget.url,
             ),
             typeYourMessageHere(),
           ],
@@ -198,45 +211,43 @@ class _MainChatScreenState extends State<MainChatScreen> {
             ),
             onPressed: () {
               messageTextController.clear();
-              print('${widget.email}');
-
-              try {
-                // print('*****************************************');
-                // var documentReference = firestore
-                //     .collection('all_text')
-                //     .doc(groupChatId)
-                //     .collection(groupChatId)
-                //     .doc(DateTime.now().millisecondsSinceEpoch.toString());
-
-                // fireStore.runTransaction((transaction) async {
-                //     transaction.set(documentReference, {
-                //       'idFrom' : widget.currentId,
-                //       'idTo' : widget.peerId,
-                //       'timeStamp'  : DateTime.now().millisecondsSinceEpoch.toString(),
-                //       'Message' : messageText,
-                //       'image' :widget.url,
-                //       'email' : loggedInUser.email,
-                //   });
-
-                // });
-                firestore
-                    .collection('all_text')
-                    .doc(groupChatId)
-                    .collection(groupChatId)
-                    .add({
-                  'Message': messageText,
-                  'image': widget.url,
-                  'email': loggedInUser.email,
-                  'time': FieldValue.serverTimestamp(),
-                });
-              } catch (e) {
+              if (messageText != null) {
+                print('${widget.email}');
+                if (messageText.trim().isEmpty) {
+                  Fluttertoast.showToast(
+                    msg: 'Please enter some valid text',
+                    backgroundColor: Color(0xffb71c1c),
+                    gravity: ToastGravity.CENTER,
+                  );
+                } else {
+                  try {
+                    firestore
+                        .collection('all_text')
+                        .doc(groupChatId)
+                        .collection(groupChatId)
+                        .add({
+                      'Message': messageText,
+                      'fromUser': widget.currentId,
+                      'toUser': widget.peerId,
+                      'email': loggedInUser.email,
+                      'time': FieldValue.serverTimestamp(),
+                    });
+                  } catch (e) {
+                    Fluttertoast.showToast(
+                      msg: e.code.toString(),
+                      toastLength: Toast.LENGTH_SHORT,
+                      gravity: ToastGravity.CENTER,
+                      //timeInSecForIos: 1
+                    );
+                    print(e.code);
+                  }
+                }
+              } else {
                 Fluttertoast.showToast(
-              msg: e.code.toString(),
-              toastLength: Toast.LENGTH_SHORT,
-              gravity: ToastGravity.CENTER,
-              //timeInSecForIos: 1
-              );
-                print(e.code);
+                  msg: 'Type some message first',
+                  backgroundColor: Color(0xffb71c1c),
+                  gravity: ToastGravity.CENTER,
+                );
               }
             },
           ),
@@ -249,8 +260,11 @@ class _MainChatScreenState extends State<MainChatScreen> {
 class MessageStream extends StatelessWidget {
   final String email;
   final String chatId;
+  final String currentUserUrl;
+  final String otherSideUserUrl;
 
-  MessageStream({this.email, this.chatId});
+  MessageStream(
+      {this.email, this.chatId, this.currentUserUrl, this.otherSideUserUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -264,11 +278,11 @@ class MessageStream extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           Fluttertoast.showToast(
-              msg: snapshot.error.toString(),
-              toastLength: Toast.LENGTH_SHORT,
-              gravity: ToastGravity.CENTER,
-              //timeInSecForIos: 1
-              );
+            msg: snapshot.error.toString(),
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.CENTER,
+            //timeInSecForIos: 1
+          );
         }
         if (!snapshot.hasData) {
           return Center(
@@ -282,7 +296,8 @@ class MessageStream extends StatelessWidget {
         List<MessageBubble> messageBubbles = [];
         for (var message in messages) {
           final messageText = message.data()['Message'];
-          final senderImage = message.data()['image'];
+          final sender = message.data()['fromUser'];
+          final recever = message.data()['toUser'];
           final identity = message.data()['email'];
           final messageTime = message.data()['time'] as Timestamp; //add this
           final currentUser = loggedInUser.email;
@@ -291,10 +306,13 @@ class MessageStream extends StatelessWidget {
           print(messageText);
 
           final messageBubble = MessageBubble(
-            sender: senderImage,
+            sender: sender,
+            recever: recever,
             text: messageText,
             isMe: currentUser == identity,
-            time: messageTime, //add this
+            time: messageTime,
+            currentUserUrl: currentUserUrl,
+            otherSideUserUrl: otherSideUserUrl, //add this
           );
 
           messageBubbles.add(messageBubble);
@@ -302,7 +320,7 @@ class MessageStream extends StatelessWidget {
         return Expanded(
           child: ListView(
               reverse: true,
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+              padding: EdgeInsets.symmetric(horizontal: 3, vertical: 20),
               children: messageBubbles),
         );
       },
@@ -312,34 +330,49 @@ class MessageStream extends StatelessWidget {
 
 class MessageBubble extends StatelessWidget {
   final String sender;
+  final String recever;
   final String text;
   final bool isMe;
   final Timestamp time;
+  final String currentUserUrl;
+  final String otherSideUserUrl;
 
   MessageBubble({
     this.text,
     this.sender,
     this.isMe,
     this.time,
+    this.recever,
+    this.currentUserUrl,
+    this.otherSideUserUrl,
   });
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.all(10),
+      padding: EdgeInsets.only(
+        top: 10,
+      ),
       child: isMe != true
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                buildPaddingImageForChat(),
-                buildMaterialTextDesign(),
-              ],
+          ? Padding(
+              padding: EdgeInsets.only(right: 40),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  getImage(otherSideUserUrl, 40),
+                  Flexible(child: buildMaterialTextDesign()),
+                ],
+              ),
             )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                buildMaterialTextDesign(),
-                buildPaddingImageForChat(),
-              ],
+          : Padding(
+              padding: EdgeInsets.only(left: 40),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Flexible(child: buildMaterialTextDesign()),
+                  getImage(currentUserUrl, 40)
+                ],
+              ),
             ),
     );
   }
@@ -347,7 +380,7 @@ class MessageBubble extends StatelessWidget {
   Material buildMaterialTextDesign() {
     return Material(
       color: isMe == true ? Color(0xffDCF8C6) : Colors.white,
-      elevation: 5,
+      elevation: 2,
       borderRadius: isMe == true
           ? BorderRadius.only(
               topLeft: Radius.circular(30),
@@ -375,12 +408,7 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  Padding buildPaddingImageForChat() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5),
-      child: CircleAvatar(
-        backgroundImage: NetworkImage(sender),
-      ),
-    );
+  Widget buildPaddingImageForChat(String userId) {
+    return getcachedNetworkImage(userId, 30);
   }
 }

@@ -219,6 +219,7 @@ class _ChatScreenState extends State<ChatScreen> {
             return Center(child: CircularProgressIndicator());
           }
           return ListView(
+              physics: BouncingScrollPhysics(),
               //shrinkWrap: true,
               //scrollDirection: Axis.vertical,
               children: snapshot.data.docs.map((e) {

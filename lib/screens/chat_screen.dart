@@ -323,6 +323,7 @@ class MessageStream extends StatelessWidget {
         return Expanded(
           child: ListView(
               reverse: true,
+              physics: BouncingScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: 3, vertical: 20),
               children: messageBubbles),
         );
@@ -362,22 +363,30 @@ class MessageBubble extends StatelessWidget {
       ),
       child: isMe != true
           ? Padding(
-              padding: EdgeInsets.only(right: 40),
+              padding: EdgeInsets.only(right: 60),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   getImage(otherSideUserUrl, 40),
+                   SizedBox(
+                    width: 5,
+                  ),
                   Flexible(child: buildMaterialTextDesign()),
                   //Text('${dateFormat.format(time.toDate())}'),
                 ],
               ),
             )
           : Padding(
-              padding: EdgeInsets.only(left: 40),
+              padding: EdgeInsets.only(left: 60),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Flexible(child: buildMaterialTextDesign()),
+                  SizedBox(
+                    width: 5,
+                  ),
                   getImage(currentUserUrl, 40),
                   //Text('${dateFormat.format(time.toDate())}'),
                 ],
@@ -392,21 +401,20 @@ class MessageBubble extends StatelessWidget {
       elevation: 2,
       borderRadius: isMe == true
           ? BorderRadius.only(
-              topLeft: Radius.circular(30),
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
+              topLeft: Radius.circular(20),
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
             )
           : BorderRadius.only(
-              topRight: Radius.circular(30),
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
+              topRight: Radius.circular(20),
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
             ),
       child: Container(
         child: Stack(
           children: [
             Padding(
-              padding: isMe ? EdgeInsets.only(top: 10,bottom: 20,left: 10,right: 30)
-              : EdgeInsets.only(top: 10,bottom: 20,left: 30,right: 10),
+              padding: EdgeInsets.only(top: 10,bottom: 20,left: 10,right: 50),
               child: Text(
                 text,
                 //textAlign: TextAlign.right,
@@ -416,9 +424,9 @@ class MessageBubble extends StatelessWidget {
                 ),
               ),
             ),
-            isMe ? Positioned(
-              bottom: 5,
-              right: 10,
+            Positioned(
+              bottom: 7,
+              right: 12,
               child: Text(
                 '${dateFormat.format(time== null ? DateTime.now() : time.toDate())}',
                 style: TextStyle(
@@ -429,19 +437,6 @@ class MessageBubble extends StatelessWidget {
                 ),
                 
               )
-              : Positioned(
-              bottom: 5,
-              left: 10,
-              child: Text(
-                '${dateFormat.format(time== null ? DateTime.now() : time.toDate())}',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600
-                ),
-                
-                ),
-                
-              ),
           ],
         ),
       ),
